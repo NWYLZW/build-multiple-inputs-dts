@@ -1,0 +1,51 @@
+diff --git a/node_modules/rollup-plugin-dts/dist/rollup-plugin-dts.mjs b/node_modules/rollup-plugin-dts/dist/rollup-plugin-dts.mjs
+index ef394ab..bc6667a 100644
+--- a/node_modules/rollup-plugin-dts/dist/rollup-plugin-dts.mjs
++++ b/node_modules/rollup-plugin-dts/dist/rollup-plugin-dts.mjs
+@@ -1720,15 +1720,22 @@ function writeBlock(codes) {
+ }
+ 
+ const TS_EXTENSIONS = /\.([cm]ts|[tj]sx?)$/;
+-function getModule({ programs, resolvedOptions: { compilerOptions, tsconfig } }, fileName, code) {
++function getModule({ entries, programs, resolvedOptions: { compilerOptions, tsconfig } }, fileName, code) {
+     // Create any `ts.SourceFile` objects on-demand for ".d.ts" modules,
+     // but only when there are zero ".ts" entry points.
+     if (!programs.length && DTS_EXTENSIONS.test(fileName)) {
+         return { code };
+     }
++    const isEntry = entries.includes(fileName);
+     // Rollup doesn't tell you the entry point of each module in the bundle,
+     // so we need to ask every TypeScript program for the given filename.
+-    const existingProgram = programs.find((p) => !!p.getSourceFile(fileName));
++    const existingProgram = programs.find((p) => {
++        if (isEntry) {
++            return !!p.getRootFileNames().find((rootFileName) => rootFileName === fileName);
++        } else {
++            return !!p.getSourceFile(fileName);
++        }
++    });
+     if (existingProgram) {
+         // we know this exists b/c of the .filter above, so this non-null assertion is safe
+         const source = existingProgram.getSourceFile(fileName);
+@@ -1756,7 +1763,7 @@ function getModule({ programs, resolvedOptions: { compilerOptions, tsconfig } },
+ }
+ const plugin = (options = {}) => {
+     const transformPlugin = transform();
+-    const ctx = { programs: [], resolvedOptions: resolveDefaultOptions(options) };
++    const ctx = { entries: [], programs: [], resolvedOptions: resolveDefaultOptions(options) };
+     return {
+         name: "dts",
+         // pass outputOptions & renderChunk hooks to the inner transform plugin
+@@ -1842,7 +1849,11 @@ const plugin = (options = {}) => {
+             // first attempt to treat .ts files as .d.ts files, and otherwise use the typescript compiler to generate the declarations
+             return treatTsAsDts() ?? generateDtsFromTs();
+         },
+-        resolveId(source, importer) {
++        resolveId(source, importer, options) {
++            const sourceAbsPath = path.resolve(source);
++            if (options.isEntry) {
++                ctx.entries.push(sourceAbsPath);
++            }
+             if (!importer) {
+                 return;
+             }

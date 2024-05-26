@@ -1,0 +1,22 @@
+{
+  "name": "build-multiple-inputs-dts",
+  "version": "0.1.0",
+  "scripts": {
+    "build:rollup": "rollup -c rollup.config.mjs",
+    "build:rollup_with_patch": "npx patch-package && npm run build:rollup && npx patch-package --reverse",
+    "build:a_by_a": "node get-ts-emit-result.mjs a",
+    "build:a_by_b": "node get-ts-emit-result.mjs b"
+  },
+  "exports": {
+    "./a": "./src/a.ts",
+    "./b": "./src/b.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.7",
+    "build-multiple-inputs-dts": "file:.",
+    "rollup": "^4.18.0",
+    "rollup-plugin-dts": "^6.1.1",
+    "typescript": "^5.4.5",
+    "patch-package": "^8.0.0"
+  }
+}
